@@ -10,13 +10,21 @@ from airflow.providers.google.cloud.operators.bigquery import \
 from airflow.providers.http.operators.http import SimpleHttpOperator
 from google.cloud import bigquery
 
+gcp_auth_key = <<gcp_auth>>
+
+with open('auth.json', 'w') as outfile:
+    json.dump(gcp_auth_key, outfile)
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "auth.json"
+os.environ["AIRFLOW_CONN_FRANKFURTER_API"] = "http://https://api.frankfurter.app/"
+PROJECT_ID = json.load(open("auth.json","rb"))["quota_project_id"]
 
 @dag(
     schedule="* * * * 1-5",
     start_date=pendulum.datetime(2023, 1, 1, tz="UTC"),
     catchup=False,
     tags=["educative"],
-    template_searchpath=["/opt/airflow/dags/sql"],
+    template_searchpath=["/usercode/sql"],
     user_defined_macros={"from_cur": "EUR", "to_cur": "USD"},
 )
 def exchange_rate_ingestion_pipeline():
@@ -33,12 +41,11 @@ def exchange_rate_ingestion_pipeline():
         ti = kwargs["task_instance"]
         from_cur = kwargs["templates_dict"]["from_cur"]
         to_cur = kwargs["templates_dict"]["to_cur"]
-        timestamp = kwargs["templates_dict"]["timestamp"]
         api_res = json.loads(
             ti.xcom_pull(task_ids="fetch_exchange_rate_from_frankfurter")
         )
         client = BigQueryHook(gcp_conn_id="google_cloud_default").get_client(
-            project_id=os.getenv("PROJECT_ID")
+            project_id=PROJECT_ID
         )
         job = client.load_table_from_dataframe(
             dataframe=pd.DataFrame(
@@ -56,6 +63,7 @@ def exchange_rate_ingestion_pipeline():
 
     merger = BigQueryInsertJobOperator(
         task_id="merge_temp_table_into_dest",
+        project_id=PROJECT_ID,
         configuration={
             "query": {
                 "query": "{% include 'exchange_rate.sql' %}",
