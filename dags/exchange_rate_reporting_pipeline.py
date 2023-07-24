@@ -11,6 +11,7 @@ def get_execution_date_fn(logical_date, **kwargs):
     return kwargs["data_interval_end"]
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "auth.json"
+os.environ["AIRFLOW_CONN_FRANKFURTER_API"] = "http://https://api.frankfurter.app/"
 PROJECT_ID = json.load(open("auth.json","rb"))["quota_project_id"]
 
 @dag(
