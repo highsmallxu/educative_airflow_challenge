@@ -1,6 +1,6 @@
 MERGE INTO airflow_challenge.exchange_rate AS dst
 USING (
-    SELECT timestamp, from_cur, to_cur, rate
+    SELECT CAST(timestamp as TIMESTAMP) as timestamp, from_cur, to_cur, rate
     FROM airflow_challenge.exchange_rate_staging
 ) AS src
 ON dst.timestamp = src.timestamp

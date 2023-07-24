@@ -30,7 +30,6 @@ def exchange_rate_ingestion_pipeline():
         endpoint="{{ data_interval_end | ds }}?&from={{ from_cur }}&to={{ to_cur }}",
     )
 
-
     @task(templates_dict={"from_cur": '{{ from_cur }}', "to_cur": '{{ to_cur }}'})
     def load_api_res_to_temp_table(**kwargs):
         ti = kwargs["task_instance"]
@@ -39,9 +38,7 @@ def exchange_rate_ingestion_pipeline():
         api_res = json.loads(
             ti.xcom_pull(task_ids="fetch_exchange_rate_from_frankfurter")
         )
-        client = BigQueryHook(gcp_conn_id="google_cloud_default").get_client(
-            project_id=PROJECT_ID
-        )
+        client = BigQueryHook().get_client(project_id=PROJECT_ID)
         job = client.load_table_from_dataframe(
             dataframe=pd.DataFrame(
                 {
