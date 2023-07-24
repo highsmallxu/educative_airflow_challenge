@@ -1,18 +1,14 @@
+import os
+import json
 import pendulum
 from airflow.decorators import dag, task
 from airflow.providers.google.cloud.operators.bigquery import \
     BigQueryInsertJobOperator
 from airflow.sensors.external_task import ExternalTaskSensor
-import json
-import os
+
 
 def get_execution_date_fn(logical_date, **kwargs):
     return kwargs["data_interval_end"]
-
-gcp_auth_key = <<gcp_auth>>
-
-with open('auth.json', 'w') as outfile:
-    json.dump(gcp_auth_key, outfile)
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "auth.json"
 PROJECT_ID = json.load(open("auth.json","rb"))["quota_project_id"]
