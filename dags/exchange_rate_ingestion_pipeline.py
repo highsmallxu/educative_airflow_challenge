@@ -30,11 +30,12 @@ def exchange_rate_ingestion_pipeline():
         endpoint="{{ data_interval_end | ds }}?&from={{ from_cur }}&to={{ to_cur }}",
     )
 
-    @task(templates_dict={"from_cur": '{{ from_cur }}', "to_cur": '{{ to_cur }}'})
+    @task(templates_dict={"from_cur": '{{ from_cur }}', "to_cur": '{{ to_cur }}', "date": '{{ data_interval_end | ds }}'})
     def load_api_res_to_temp_table(**kwargs):
         ti = kwargs["task_instance"]
         from_cur = kwargs["templates_dict"]["from_cur"]
         to_cur = kwargs["templates_dict"]["to_cur"]
+        date = kwargs["templates_dict"]["date"]
         api_res = json.loads(
             ti.xcom_pull(task_ids="fetch_exchange_rate_from_frankfurter")
         )
@@ -43,6 +44,7 @@ def exchange_rate_ingestion_pipeline():
             dataframe=pd.DataFrame(
                 {
                     "timestamp": [pd.Timestamp.now().round('min')],
+                    "date": date,
                     "from_cur": [from_cur],
                     "to_cur": [to_cur],
                     "rate": [api_res["rates"][to_cur]],
