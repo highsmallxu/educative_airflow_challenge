@@ -19,3 +19,5 @@ PROJECT_ID = json.load(open("auth.json","rb"))["quota_project_id"]
 )
 def exchange_rate_reporting_pipeline():
     pass
+
+exchange_rate_reporting_pipeline()
