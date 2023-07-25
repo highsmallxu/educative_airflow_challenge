@@ -5,14 +5,15 @@ import pendulum
 from airflow.decorators import dag, task
 from airflow.models.xcom import XCom
 from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
-from airflow.providers.google.cloud.operators.bigquery import \
-    BigQueryInsertJobOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.providers.http.operators.http import SimpleHttpOperator
 from google.cloud import bigquery
+from datetime import datetime
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "auth.json"
 os.environ["AIRFLOW_CONN_FRANKFURTER_API"] = "http://https://api.frankfurter.app/"
-PROJECT_ID = json.load(open("auth.json","rb"))["quota_project_id"]
+PROJECT_ID = json.load(open("auth.json", "rb"))["quota_project_id"]
+
 
 @dag(
     schedule="* * * * 1-5",
@@ -30,7 +31,13 @@ def exchange_rate_ingestion_pipeline():
         endpoint="{{ data_interval_end | ds }}?&from={{ from_cur }}&to={{ to_cur }}",
     )
 
-    @task(templates_dict={"from_cur": '{{ from_cur }}', "to_cur": '{{ to_cur }}', "date": '{{ data_interval_end | ds }}'})
+    @task(
+        templates_dict={
+            "from_cur": "{{ from_cur }}",
+            "to_cur": "{{ to_cur }}",
+            "date": "{{ data_interval_end | ds }}",
+        }
+    )
     def load_api_res_to_temp_table(**kwargs):
         ti = kwargs["task_instance"]
         from_cur = kwargs["templates_dict"]["from_cur"]
@@ -43,15 +50,17 @@ def exchange_rate_ingestion_pipeline():
         job = client.load_table_from_dataframe(
             dataframe=pd.DataFrame(
                 {
-                    "timestamp": [pd.Timestamp.now().round('min')],
-                    "date": date,
+                    "timestamp": [pd.Timestamp.now().round("min")],
+                    "date": [datetime.strptime(date, "%Y-%m-%d")],
                     "from_cur": [from_cur],
                     "to_cur": [to_cur],
                     "rate": [api_res["rates"][to_cur]],
                 }
             ),
             destination="airflow_challenge.exchange_rate_staging",
-            job_config=bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE"),
+            job_config=bigquery.LoadJobConfig(
+                write_disposition="WRITE_TRUNCATE"
+            ),
         )
         job.result()
 
